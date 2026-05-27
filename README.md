@@ -3,7 +3,7 @@
 # ReqStructureResponse
 
 [Req](https://github.com/wojtekmach/req) plugin for applying structure to
-  response bodies.
+response bodies.
 
 ## Installation
 
@@ -17,6 +17,34 @@ def deps do
   ]
 end
 ```
+
+## Usage
+
+```elixir
+Mix.install([
+  {:req, "~> 0.5.0"},
+  {:req_structure_response, "~> 0.1.0"}
+])
+
+defmodule SomeStructure do
+  defstruct [:slideshow]
+end
+
+req = Req.new() |> ReqStructureResponse.attach()
+
+#-- passing an anonymous function
+Req.get!(req, url: "https://httpbin.org/json", apply_structure: fn body ->
+  %SomeStructure{slideshow: body["slideshow"]}
+end).body
+#=> %SomeStructure{...}
+
+#-- ReqStructureResponse.into/1
+
+Req.get!(req, url: "https://httpbin.org/json", apply_structure: ReqStructureResponse.into(SomeStructure)).body
+#=> %SomeStructure{...}
+```
+
+## Misc.
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
