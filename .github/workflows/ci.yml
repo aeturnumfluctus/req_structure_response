@@ -1,0 +1,55 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    env:
+      MIX_ENV: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pair:
+              elixir: "1.19.0"
+              otp: "27"
+          - pair:
+              elixir: "1.19.5-otp-28"
+              otp: "28.5"
+            lint: lint
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: erlef/setup-beam@main
+        with:
+          otp-version: ${{ matrix.pair.otp }}
+          elixir-version: ${{ matrix.pair.elixir }}
+
+      - uses: actions/cache@v5
+        with:
+          path: deps
+          # ezstd and brotli are compiling native objects to deps/x/_build, not _build,
+          # so we need to cache per OTP
+          key: mix-otp-${{ matrix.pair.otp }}-deps-${{ hashFiles('**/mix.lock') }}
+
+      - run: mix deps.get --check-locked
+
+      - run: mix format --check-formatted
+        if: ${{ matrix.lint }}
+
+      - run: mix deps.unlock --check-unused
+        if: ${{ matrix.lint }}
+
+      - run: mix deps.compile
+
+      - run: mix compile --no-optional-deps --warnings-as-errors
+        if: ${{ matrix.lint }}
+
+      - run: mix test --slowest 5
+        if: ${{ ! matrix.lint }}
+
+      - run: mix test --slowest 5 --warnings-as-errors
+        if: ${{ matrix.lint }}
