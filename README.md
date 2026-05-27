@@ -1,3 +1,5 @@
+[![CI](https://github.com/aeturnumfluctus/req_structure_response/actions/workflows/ci.yml/badge.svg)](https://github.com/aeturnumfluctus/req_structure_response/actions/workflows/ci.yml)
+
 # ReqStructureResponse
 
 [Req](https://github.com/wojtekmach/req) plugin for applying structure to
