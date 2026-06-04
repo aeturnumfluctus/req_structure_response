@@ -43,7 +43,7 @@ defmodule ReqStructureResponseTest do
       assert msg =~ "expected 1-arity function"
     end
 
-    test "returns an error when the :apply_structure function raises" do
+    test "returns an ApplyStructureError when the :apply_structure function raises" do
       req =
         Req.new(plug: {Req.Test, __MODULE__})
         |> ReqStructureResponse.attach(apply_structure: fn _ -> raise "boom" end)
@@ -52,7 +52,10 @@ defmodule ReqStructureResponseTest do
         Req.Test.json(conn, %{ok: true})
       end)
 
-      assert {:error, %RuntimeError{message: "boom"}} = Req.get(req)
+      assert {:error, %ReqStructureResponse.ApplyStructureError{} = err} = Req.get(req)
+      assert %RuntimeError{message: "boom"} = err.error
+      assert %Req.Response{status: 200} = err.response
+      assert is_function(err.constructor, 1)
     end
   end
 
@@ -98,10 +101,16 @@ defmodule ReqStructureResponseTest do
   end
 
   describe "into/2 with unwrap" do
-    test "unwraps a key before applying structure" do
+    test "unwraps a string key before applying structure" do
       fun = ReqStructureResponse.into([User], unwrap: "data")
       body = %{"data" => [%{"name" => "Alice"}, %{"name" => "Bob"}]}
       assert fun.(body) == [%User{name: "Alice"}, %User{name: "Bob"}]
+    end
+
+    test "unwraps an atom key before applying structure" do
+      fun = ReqStructureResponse.into(User, unwrap: :user)
+      body = %{user: %{name: "Alice", email: "alice@test.com"}}
+      assert fun.(body) == %User{name: "Alice", email: "alice@test.com"}
     end
 
     test "raises KeyError when unwrap key is missing" do

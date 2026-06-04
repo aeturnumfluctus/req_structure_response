@@ -6,8 +6,19 @@ defmodule ReqStructureResponse do
   ## Request Options
 
   * `:apply_structure` - a 1-arity function that transforms the response body.
-    When `nil` (the default), the response is returned unchanged. See `into/1`
+    When `nil` (the default), the response is returned unchanged. See `into/2`
     for a convenient helper that converts map bodies into structs.
+
+  > #### Order Matters! {: .info}
+  >
+  > By default, `apply_structure/1` runs as the **FINAL** response step.
+
+  > #### Sensitive Response Data {: .warning}
+  >
+  > This step returns `ReqStructureResponse.ApplyStructureError` which contains the
+  > full `Req.Response`. Since response headers/body can contain sensitive data, be
+  > careful about raising this error and automatically logging it, sending to
+  > exception trackers, etc.
 
   """
 
@@ -30,7 +41,7 @@ defmodule ReqStructureResponse do
         try do
           {request, %{response | body: fun.(response.body)}}
         rescue
-          e -> {request, e}
+          e -> {request, apply_structure_exception(response, fun, e)}
         end
 
       bad ->
@@ -110,5 +121,13 @@ defmodule ReqStructureResponse do
   def into(module, unwrap: key) do
     inner = into(module)
     fn body -> body |> Map.fetch!(key) |> inner.() end
+  end
+
+  defp apply_structure_exception(response, fun, error) do
+    ReqStructureResponse.ApplyStructureError.exception(
+      constructor: fun,
+      response: response,
+      error: error
+    )
   end
 end
